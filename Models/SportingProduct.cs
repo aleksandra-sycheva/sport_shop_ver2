@@ -27,6 +27,8 @@ public partial class SportingProduct
 
     public string Description { get; set; } = null!;
 
+    public string Photo { get; set; }
+
     public virtual Category IdCategoryNavigation { get; set; } = null!;
 
     public virtual Manufacturer IdManufacturerNavigation { get; set; } = null!;

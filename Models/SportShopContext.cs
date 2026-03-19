@@ -145,6 +145,7 @@ public partial class SportShopContext : DbContext
             entity.Property(e => e.IdSupplier).HasColumnName("id_supplier");
             entity.Property(e => e.Price).HasColumnName("price");
             entity.Property(e => e.ProductName).HasColumnName("product_name");
+            entity.Property(e => e.Photo).HasColumnName("photo").IsRequired(false);
 
             entity.HasOne(d => d.IdCategoryNavigation).WithMany(p => p.SportingProducts)
                 .HasForeignKey(d => d.IdCategory)
