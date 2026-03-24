@@ -40,9 +40,24 @@ namespace sport_shop_ver2
             CurrentUser = user;
             IsGuest = guest;
 
-            lblUserName.Text = IsGuest ? "Гость" : $"{CurrentUser.FirstName} {CurrentUser.LastName}";
+            if (IsGuest)
+            {
+                btnFormsOrder.Visible = false;
+                btnCreate.Visible = false;
+                btnUpdate.Visible = false;
+                btnDelete.Visible = false;
+            }
+
+
 
             LoadProducts();
+
+           
+            btnCreate.Click += BtnCreate_Click;
+            btnUpdate.Click += BtnUpdate_Click;
+            btnDelete.Click += BtnDelete_Click;
+            dgvProducts.CellDoubleClick += DgvProducts_CellDoubleClick;
+            lblUserName.Text = IsGuest ? "Гость" : $"{CurrentUser.MiddleName} {CurrentUser.FirstName} {CurrentUser.LastName}";
         }
 
         private void DgvProducts_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
@@ -202,26 +217,91 @@ namespace sport_shop_ver2
 
         private decimal GetPrice(string priceStr)
         {
-            if (decimal.TryParse(priceStr?.Replace(",", ".") ?? "0", out decimal price))
+            if (decimal.TryParse(priceStr.Replace(',', '.'), out decimal price))
             {
                 return price;
             }
             return 0m;
         }
 
-        /*private void BtnFormsOrder_Click(object sender, EventArgs e)
+        private void BtnLogout_Click(object sender, EventArgs e)
         {
             this.Close();
-            using (var formOrders = new FormOrders(CurrentUser, IsGuest))
-            {
-                formOrders.ShowDialog();
-            }
-        }*/
+            new FormLogin();
+        }
 
-        private void BtnLogin_Click(object sender, EventArgs e)
+        /* private void btnFormsOrder_Click(object sender, EventArgs e)
+         {
+             this.Close();
+             using (var formOrders = new FormOrders(CurrentUser, IsGuest))
+             {
+                 formOrders.ShowDialog();
+             }
+         }*/
+
+        private void BtnCreate_Click(object sender, EventArgs e)
         {
-            this.DialogResult = DialogResult.Cancel;
-            this.Close();
+            using (var formEdit = new FormProductEdit())
+            {
+                if (formEdit.ShowDialog() == DialogResult.OK)
+                {
+                    LoadProducts();
+                }
+            }
+        }
+
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
+            {
+                using (var formEdit = new FormProductEdit(product))
+                {
+                    if (formEdit.ShowDialog() == DialogResult.OK)
+                    {
+                        LoadProducts();
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите товар для редактирования!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void BtnDelete_Click(object sender, EventArgs e)
+        {
+            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
+            {
+                var result = MessageBox.Show($"Удалить товар '{product.ProductName}'?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        using (var db = new SportShopContext())
+                        {
+                            db.SportingProducts.Remove(product);
+                            db.SaveChanges();
+                            LoadProducts();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите товар для удаления!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void DgvProducts_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+            {
+                BtnUpdate_Click(sender, EventArgs.Empty);
+            }
         }
     }
 }

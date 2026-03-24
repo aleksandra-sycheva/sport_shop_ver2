@@ -30,6 +30,9 @@
         {
             DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
             panelTop = new Panel();
+            btnDelete = new Button();
+            btnUpdate = new Button();
+            btnCreate = new Button();
             btnFormsOrder = new Button();
             lblUserName = new Label();
             btnLogut = new Button();
@@ -40,6 +43,9 @@
             // 
             // panelTop
             // 
+            panelTop.Controls.Add(btnDelete);
+            panelTop.Controls.Add(btnUpdate);
+            panelTop.Controls.Add(btnCreate);
             panelTop.Controls.Add(btnFormsOrder);
             panelTop.Controls.Add(lblUserName);
             panelTop.Controls.Add(btnLogut);
@@ -47,19 +53,57 @@
             panelTop.Location = new Point(10, 10);
             panelTop.Name = "panelTop";
             panelTop.Padding = new Padding(0, 0, 0, 10);
-            panelTop.Size = new Size(1162, 40);
+            panelTop.Size = new Size(1162, 53);
             panelTop.TabIndex = 0;
+            // 
+            // btnDelete
+            // 
+            btnDelete.BackColor = Color.FromArgb(67, 97, 238);
+            btnDelete.FlatAppearance.BorderSize = 0;
+            btnDelete.FlatStyle = FlatStyle.Flat;
+            btnDelete.ForeColor = Color.White;
+            btnDelete.Location = new Point(531, 4);
+            btnDelete.Name = "btnDelete";
+            btnDelete.Size = new Size(170, 43);
+            btnDelete.TabIndex = 10;
+            btnDelete.Text = "Удалить";
+            btnDelete.UseVisualStyleBackColor = false;
+            // 
+            // btnUpdate
+            // 
+            btnUpdate.BackColor = Color.FromArgb(67, 97, 238);
+            btnUpdate.FlatAppearance.BorderSize = 0;
+            btnUpdate.FlatStyle = FlatStyle.Flat;
+            btnUpdate.ForeColor = Color.White;
+            btnUpdate.Location = new Point(355, 4);
+            btnUpdate.Name = "btnUpdate";
+            btnUpdate.Size = new Size(170, 43);
+            btnUpdate.TabIndex = 9;
+            btnUpdate.Text = "Редактировать";
+            btnUpdate.UseVisualStyleBackColor = false;
+            // 
+            // btnCreate
+            // 
+            btnCreate.BackColor = Color.FromArgb(67, 97, 238);
+            btnCreate.FlatAppearance.BorderSize = 0;
+            btnCreate.FlatStyle = FlatStyle.Flat;
+            btnCreate.ForeColor = Color.White;
+            btnCreate.Location = new Point(179, 4);
+            btnCreate.Name = "btnCreate";
+            btnCreate.Size = new Size(170, 43);
+            btnCreate.TabIndex = 8;
+            btnCreate.Text = "Добавить";
+            btnCreate.UseVisualStyleBackColor = false;
             // 
             // btnFormsOrder
             // 
             btnFormsOrder.BackColor = Color.FromArgb(67, 97, 238);
-            btnFormsOrder.Dock = DockStyle.Left;
             btnFormsOrder.FlatAppearance.BorderSize = 0;
             btnFormsOrder.FlatStyle = FlatStyle.Flat;
             btnFormsOrder.ForeColor = Color.White;
-            btnFormsOrder.Location = new Point(0, 0);
+            btnFormsOrder.Location = new Point(3, 4);
             btnFormsOrder.Name = "btnFormsOrder";
-            btnFormsOrder.Size = new Size(170, 30);
+            btnFormsOrder.Size = new Size(170, 43);
             btnFormsOrder.TabIndex = 7;
             btnFormsOrder.Text = "Заказы";
             btnFormsOrder.UseVisualStyleBackColor = false;
@@ -83,11 +127,11 @@
             btnLogut.FlatStyle = FlatStyle.Flat;
             btnLogut.Location = new Point(992, 0);
             btnLogut.Name = "btnLogut";
-            btnLogut.Size = new Size(170, 30);
+            btnLogut.Size = new Size(170, 43);
             btnLogut.TabIndex = 5;
             btnLogut.Text = "Выход";
             btnLogut.UseVisualStyleBackColor = false;
-            btnLogut.Click += BtnLogin_Click;
+            btnLogut.Click += BtnLogout_Click;
             // 
             // dgvProducts
             // 
@@ -104,19 +148,20 @@
             dataGridViewCellStyle1.Font = new Font("Times New Roman", 12F, FontStyle.Regular, GraphicsUnit.Point, 204);
             dataGridViewCellStyle1.ForeColor = SystemColors.ControlText;
             dataGridViewCellStyle1.Format = " ";
-            dataGridViewCellStyle1.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle1.SelectionBackColor = Color.FromArgb(200, 230, 255);
+            dataGridViewCellStyle1.SelectionForeColor = Color.Black;
             dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
             dgvProducts.DefaultCellStyle = dataGridViewCellStyle1;
             dgvProducts.Dock = DockStyle.Fill;
-            dgvProducts.Location = new Point(10, 50);
+            dgvProducts.Location = new Point(10, 63);
             dgvProducts.MultiSelect = false;
             dgvProducts.Name = "dgvProducts";
             dgvProducts.ReadOnly = true;
             dgvProducts.RowHeadersVisible = false;
             dgvProducts.RowHeadersWidth = 51;
+            dgvProducts.ScrollBars = ScrollBars.Vertical;
             dgvProducts.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvProducts.Size = new Size(1162, 593);
+            dgvProducts.Size = new Size(1162, 580);
             dgvProducts.TabIndex = 1;
             // 
             // FormProducts
@@ -130,7 +175,6 @@
             Font = new Font("Times New Roman", 12F, FontStyle.Regular, GraphicsUnit.Point, 204);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             Margin = new Padding(4, 3, 4, 3);
-            MaximizeBox = false;
             MinimizeBox = false;
             Name = "FormProducts";
             Padding = new Padding(10);
@@ -149,6 +193,9 @@
         private Label lblUserName;
         private Button btnLogut;
         private DataGridView dgvProducts;
+        private Button btnCreate;
+        private Button btnUpdate;
+        private Button btnDelete;
     }
 }
 
