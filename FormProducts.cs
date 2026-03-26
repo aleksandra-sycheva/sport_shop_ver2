@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
@@ -12,6 +13,10 @@ namespace sport_shop_ver2
     {
         public User CurrentUser { get; private set; }
         public bool IsGuest { get; private set; }
+
+        private string _currentSearch = "";
+        private int? _currentSupplierId = null;
+        private string _currentSort = "none";
 
         public FormProducts(User user, bool guest)
         {
@@ -40,6 +45,17 @@ namespace sport_shop_ver2
             CurrentUser = user;
             IsGuest = guest;
 
+            // Load role if not guest
+            if (!IsGuest)
+            {
+                using (var db = new SportShopContext())
+                {
+                    var role = db.Roles.Find(CurrentUser.IdRole);
+                    if (role != null)
+                        CurrentUser.IdRoleNavigation = role;
+                }
+            }
+
             if (IsGuest)
             {
                 btnFormsOrder.Visible = false;
@@ -47,17 +63,123 @@ namespace sport_shop_ver2
                 btnUpdate.Visible = false;
                 btnDelete.Visible = false;
             }
+            else
+            {
+                string? roleName = CurrentUser.IdRoleNavigation?.RoleName;
+                btnCreate.Visible = roleName == "Администратор";
+                btnUpdate.Visible = roleName == "Администратор";
+                btnDelete.Visible = true; // manager can delete
+            }
 
+            // Filter UI visibility for manager/admin
+            bool showFilters = !IsGuest && (CurrentUser.IdRoleNavigation?.RoleName == "Менеджер" || CurrentUser.IdRoleNavigation?.RoleName == "Администратор");
+            lblSearch.Visible = txtSearch.Visible = lblSupplierFilter.Visible = cmbSupplierFilter.Visible = lblSort.Visible = cboSortStock.Visible = showFilters;
 
+            LoadFilteredProducts();
 
-            LoadProducts();
+            // Wire events
+            txtSearch.TextChanged += (s, e) => {
+                _currentSearch = txtSearch.Text;
+                LoadFilteredProducts();
+            };
+            cmbSupplierFilter.SelectedIndexChanged += (s, e) => {
+                if (cmbSupplierFilter.SelectedValue?.ToString() == "0")
+                    _currentSupplierId = null;
+                else
+                    _currentSupplierId = cmbSupplierFilter.SelectedValue is int id ? id : null;
+                LoadFilteredProducts();
+            };
+            cboSortStock.SelectedIndexChanged += (s, e) => {
+                _currentSort = cboSortStock.SelectedIndex switch {
+                    0 => "none",
+                    1 => "asc",
+                    2 => "desc",
+                    _ => "none"
+                };
+                LoadFilteredProducts();
+            };
 
-           
             btnCreate.Click += BtnCreate_Click;
             btnUpdate.Click += BtnUpdate_Click;
             btnDelete.Click += BtnDelete_Click;
+            btnFormsOrder.Click += BtnFormsOrder_Click;
             dgvProducts.CellDoubleClick += DgvProducts_CellDoubleClick;
             lblUserName.Text = IsGuest ? "Гость" : $"{CurrentUser.MiddleName} {CurrentUser.FirstName} {CurrentUser.LastName}";
+        }
+
+        private void BtnFormsOrder_Click(object sender, EventArgs e)
+        {
+            using (var formOrders = new FormOrders())
+            {
+                formOrders.ShowDialog();
+            }
+        }
+
+        private void BtnCreate_Click(object sender, EventArgs e)
+        {
+            if (CurrentUser.IdRoleNavigation?.RoleName != "Администратор")
+            {
+                MessageBox.Show("Только администратор может добавлять товары!", "Доступ запрещен", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            using (var formEdit = new FormProductEdit())
+            {
+                if (formEdit.ShowDialog() == DialogResult.OK)
+                {
+                    LoadFilteredProducts();
+                }
+            }
+        }
+
+        private void BtnUpdate_Click(object sender, EventArgs e)
+        {
+            if (CurrentUser.IdRoleNavigation?.RoleName != "Администратор")
+            {
+                MessageBox.Show("Только администратор может редактировать товары!", "Доступ запрещен", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
+            {
+                using (var formEdit = new FormProductEdit(product))
+                {
+                    if (formEdit.ShowDialog() == DialogResult.OK)
+                    {
+                        LoadFilteredProducts();
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите товар для редактирования!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        private void BtnDelete_Click(object sender, EventArgs e)
+        {
+            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
+            {
+                var result = MessageBox.Show($"Удалить товар '{product.ProductName}'?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (result == DialogResult.Yes)
+                {
+                    try
+                    {
+                        using (var db = new SportShopContext())
+                        {
+                            db.SportingProducts.Remove(product);
+                            db.SaveChanges();
+                            LoadFilteredProducts();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+            else
+            {
+                MessageBox.Show("Выберите товар для удаления!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void DgvProducts_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
@@ -77,23 +199,19 @@ namespace sport_shop_ver2
                     string oldPriceStr = price.ToString("C");
                     string newPriceStr = finalPrice.ToString("C");
 
-                    // Стандартный текст без строки цены
                     string fullText = FormatProductInfo(product).Replace($"Цена: {oldPriceStr}", "").Replace($"Цена: {oldPriceStr} → {newPriceStr}", "");
                     string[] lines = fullText.Split('\n');
                     string textBefore = string.Join("\n", lines.Take(4));
                     string textAfter = string.Join("\n", lines.Skip(5));
 
-                    // Рисуем текст до цены
                     SizeF beforeSize = e.Graphics.MeasureString(textBefore + "\n", e.CellStyle.Font);
                     e.Graphics.DrawString(textBefore, e.CellStyle.Font, new SolidBrush(e.CellStyle.ForeColor), e.CellBounds.Left, e.CellBounds.Top);
 
-                    // Строка цены
                     float yPrice = e.CellBounds.Top + beforeSize.Height;
                     e.Graphics.DrawString("Цена: ", e.CellStyle.Font, new SolidBrush(e.CellStyle.ForeColor), e.CellBounds.Left, yPrice);
 
                     float xPrice = e.CellBounds.Left + e.Graphics.MeasureString("Цена: ", e.CellStyle.Font).Width;
 
-                    // Зачеркнутая старая цена
                     using (Pen strikePen = new Pen(e.CellStyle.ForeColor, 2))
                     {
                         SizeF oldPriceSize = e.Graphics.MeasureString(oldPriceStr, e.CellStyle.Font);
@@ -103,38 +221,69 @@ namespace sport_shop_ver2
                         xPrice += oldPriceSize.Width;
                     }
 
-                    // Стрелка
                     SizeF arrowSize = e.Graphics.MeasureString(" → ", e.CellStyle.Font);
                     e.Graphics.DrawString(" → ", e.CellStyle.Font, new SolidBrush(e.CellStyle.ForeColor), xPrice, yPrice);
                     xPrice += arrowSize.Width;
 
-                    // Новая цена
                     e.Graphics.DrawString(newPriceStr, new Font(e.CellStyle.Font, FontStyle.Bold), new SolidBrush(Color.Red), xPrice, yPrice);
 
-                    // Текст после цены
                     float yAfter = yPrice + e.Graphics.MeasureString("Цена: 1000,00 → 800,00", e.CellStyle.Font).Height;
                     e.Graphics.DrawString(textAfter, e.CellStyle.Font, new SolidBrush(e.CellStyle.ForeColor), e.CellBounds.Left, yAfter);
                 }
             }
         }
 
-        private void LoadProducts()
+        private void LoadFilteredProducts()
         {
             try
             {
                 using (var db = new SportShopContext())
                 {
-                    var products = db.SportingProducts
+                    var allProducts = db.SportingProducts
                         .Include(p => p.IdCategoryNavigation)
                         .Include(p => p.IdManufacturerNavigation)
                         .Include(p => p.IdSupplierNavigation)
                         .Include(p => p.IdMeasureNavigation)
                         .ToList();
 
+                    var products = allProducts.AsQueryable();
+
+                    if (!string.IsNullOrEmpty(_currentSearch))
+                    {
+                        var search = _currentSearch.ToLower();
+                        products = products.Where(p =>
+                            p.ProductName.ToLower().Contains(search) ||
+                            p.Description.ToLower().Contains(search) ||
+                            p.Art.ToLower().Contains(search) ||
+                            p.IdCategoryNavigation.CategoryName.ToLower().Contains(search) ||
+                            p.IdManufacturerNavigation.ManufacturerName.ToLower().Contains(search) ||
+                            p.IdSupplierNavigation.SupplierName.ToLower().Contains(search) ||
+                            p.IdMeasureNavigation.MeasureName.ToLower().Contains(search) ||
+                            p.Price.ToLower().Contains(search)
+                        );
+                    }
+
+                    if (_currentSupplierId.HasValue && _currentSupplierId > 0)
+                    {
+                        products = products.Where(p => p.IdSupplier == _currentSupplierId.Value);
+                    }
+
+                    switch (_currentSort)
+                    {
+                        case "asc":
+                            products = products.OrderBy(p => p.CointInStok);
+                            break;
+                        case "desc":
+                            products = products.OrderByDescending(p => p.CointInStok);
+                            break;
+                    }
+
+                    var filteredProducts = products.ToList();
+
                     dgvProducts.SuspendLayout();
                     dgvProducts.Rows.Clear();
 
-                    foreach (var product in products)
+                    foreach (var product in filteredProducts)
                     {
                         int rowIndex = dgvProducts.Rows.Add();
                         var row = dgvProducts.Rows[rowIndex];
@@ -228,72 +377,6 @@ namespace sport_shop_ver2
         {
             this.Close();
             new FormLogin();
-        }
-
-        /* private void btnFormsOrder_Click(object sender, EventArgs e)
-         {
-             this.Close();
-             using (var formOrders = new FormOrders(CurrentUser, IsGuest))
-             {
-                 formOrders.ShowDialog();
-             }
-         }*/
-
-        private void BtnCreate_Click(object sender, EventArgs e)
-        {
-            using (var formEdit = new FormProductEdit())
-            {
-                if (formEdit.ShowDialog() == DialogResult.OK)
-                {
-                    LoadProducts();
-                }
-            }
-        }
-
-        private void BtnUpdate_Click(object sender, EventArgs e)
-        {
-            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
-            {
-                using (var formEdit = new FormProductEdit(product))
-                {
-                    if (formEdit.ShowDialog() == DialogResult.OK)
-                    {
-                        LoadProducts();
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("Выберите товар для редактирования!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-
-        private void BtnDelete_Click(object sender, EventArgs e)
-        {
-            if (dgvProducts.CurrentRow?.Tag is SportingProduct product)
-            {
-                var result = MessageBox.Show($"Удалить товар '{product.ProductName}'?", "Подтверждение", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (result == DialogResult.Yes)
-                {
-                    try
-                    {
-                        using (var db = new SportShopContext())
-                        {
-                            db.SportingProducts.Remove(product);
-                            db.SaveChanges();
-                            LoadProducts();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Ошибка удаления: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
-                }
-            }
-            else
-            {
-                MessageBox.Show("Выберите товар для удаления!", "Информация", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
         }
 
         private void DgvProducts_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
